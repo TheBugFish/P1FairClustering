@@ -1,0 +1,14 @@
+{
+    "bank": {
+        "sensitive_column": "marital",
+        "sensitive_values": ["single","married"],
+        "distance_columns": ["age","balance","duration"],
+        "subset_size": 1000
+    },
+    "adult": {
+        "sensitive_column": "sex",
+        "sensitive_values": ["Male","Female"],
+        "distance_columns": ["age","fnlwgt","education-num","capital-gain","hours-per-week"],
+        "subset_size": 600
+    }
+}

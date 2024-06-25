@@ -35,3 +35,8 @@ class math_helper:
             for i in range(n):
                 distance[i,p] = abs(X[i,0]-points[p,0])+abs(X[i,1]-points[p,1])
         return distance
+
+    def get_balance(self, data, sensitive_column, dataset_name):
+        if(data[self.config[dataset_name]['sensitive_column']].std()==0):
+            return 0
+        return min(data.value_counts(sensitive_column)[0]/data.value_counts(sensitive_column)[1],data.value_counts(sensitive_column)[1]/data.value_counts(sensitive_column)[0])

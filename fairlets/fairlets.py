@@ -1,8 +1,10 @@
 import networkx as nx
 import time
+import numpy as np
 from helper.math_helper import math_helper
 from helper.data_loader import data_loader
 from helper.k_center import k_center
+from helper.k_medians import k_medians
 
 class fairlet_decomposition:
 
@@ -171,7 +173,7 @@ class fairlet_decomposition:
         balances = []
         for cluster in clusters:
             if len(cluster) > 1:
-                balances.append(self.mathHelper.get_balance(cluster, self.config[self.dataset_name]['sensitive_column'], self.dataset_name))
+                balances.append(self.mathHelper.get_balance(cluster, self.config[self.dataset_name]['sensitive_column'][0], self.dataset_name))
         return balances
     
 
@@ -183,7 +185,7 @@ class fairlet_decomposition:
         self.fairlet_center_sampled_dataset = self.get_fairlet_center_dataframe(centers)
         self.fairlet_centers_dataset = self.get_fairlet_center_dataframe(centers, False)
 
-    def CalculateClusterCostAndBalance_K_Centers(self, k_centers_instance: k_center, starting_num_clusters=3, max_num_clusters=20):
+    def CalculateClusterCostAndBalance(self, k_centers_instance: k_center, k_medians_instance: k_medians, clustering_method = "k-centers", starting_num_clusters=3, max_num_clusters=20, balance_evaluation="min"):
         unfair_costs = []
         unfair_balances = []
         unfair_durations = []
@@ -195,22 +197,53 @@ class fairlet_decomposition:
         cluster_counts = []
 
         for cluster_count in range(starting_num_clusters, max_num_clusters+1):
+            print("cluster count: " + str(cluster_count))
             cluster_counts.append(cluster_count)
 
-            unfair_start_time = time.time()
-            k_centers_instance.fit(self.dataset, cluster_count)
-            vanilla_costs, vanilla_cluster_mapping = k_centers_instance.get_results()
-            unfair_durations.append(time.time() - unfair_start_time)
-            unfair_costs.append(vanilla_costs[-1])
-            unfair_balance = self.get_cluster_balances(self.dataset,vanilla_cluster_mapping)
-            unfair_balances.append(min(unfair_balance))
+            if(clustering_method == "k-centers"):
+                unfair_start_time = time.time()
+                k_centers_instance.fit(self.dataset, cluster_count)
+                vanilla_costs, vanilla_cluster_mapping = k_centers_instance.get_results()
+                unfair_durations.append(time.time() - unfair_start_time)
+                unfair_costs.append(vanilla_costs)
+                unfair_balance = self.get_cluster_balances(self.dataset,vanilla_cluster_mapping)
+                if(balance_evaluation == "min"):
+                    unfair_balances.append(min(unfair_balance))
+                elif(balance_evaluation == "mean"):
+                    unfair_balances.append(np.average(unfair_balance))
 
-            fair_start_time = time.time()
-            k_centers_instance.fit(self.fairlet_center_sampled_dataset, cluster_count)
-            fairlet_costs, fairlet_cluster_mapping = k_centers_instance.get_results()
-            fair_durations.append(time.time() - fair_start_time)
-            fair_costs.append(fairlet_costs[-1])
-            fair_balance = self.get_cluster_balances(self.fairlet_centers_dataset, fairlet_cluster_mapping, self.information, True)
-            fair_balances.append(min(fair_balance))
+                fair_start_time = time.time()
+                k_centers_instance.fit(self.fairlet_center_sampled_dataset, cluster_count)
+                fairlet_costs, fairlet_cluster_mapping = k_centers_instance.get_results()
+                fair_durations.append(time.time() - fair_start_time)
+                fair_costs.append(fairlet_costs)
+                fair_balance = self.get_cluster_balances(self.fairlet_centers_dataset, fairlet_cluster_mapping, self.information, True)
+                if(balance_evaluation == "min"):
+                    fair_balances.append(min(fair_balance))
+                elif(balance_evaluation == "mean"):
+                    fair_balances.append(np.average(fair_balance))
+
+            elif(clustering_method == "k-medians"):
+                unfair_start_time = time.time()
+                k_medians_instance.fit(self.dataset, cluster_count)
+                vanilla_costs, vanilla_cluster_mapping = k_medians_instance.get_results()
+                unfair_durations.append(time.time() - unfair_start_time)
+                unfair_costs.append(vanilla_costs[np.argmax(vanilla_costs)])
+                unfair_balance = self.get_cluster_balances(self.dataset,vanilla_cluster_mapping)
+                if(balance_evaluation == "min"):
+                    unfair_balances.append(min(unfair_balance))
+                elif(balance_evaluation == "mean"):
+                    unfair_balances.append(np.average(unfair_balance))
+
+                fair_start_time = time.time()
+                k_medians_instance.fit(self.fairlet_center_sampled_dataset, cluster_count)
+                fairlet_costs, fairlet_cluster_mapping = k_medians_instance.get_results()
+                fair_durations.append(time.time() - fair_start_time)
+                fair_costs.append(vanilla_costs[np.argmax(fairlet_costs)])
+                fair_balance = self.get_cluster_balances(self.fairlet_centers_dataset, fairlet_cluster_mapping, self.information, True)
+                if(balance_evaluation == "min"):
+                    fair_balances.append(min(fair_balance))
+                elif(balance_evaluation == "mean"):
+                    fair_balances.append(np.average(fair_balance))
 
         return cluster_counts, unfair_costs, unfair_balances, unfair_durations, fair_costs, fair_balances, fair_durations

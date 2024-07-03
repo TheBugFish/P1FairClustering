@@ -1,13 +1,13 @@
 {
     "bank": {
-        "sensitive_column": "marital",
-        "sensitive_values": ["single","married"],
+        "sensitive_column": ["marital"],
+        "sensitive_values": [["single","married"]],
         "distance_columns": ["age","balance","duration"],
         "subset_size": 1000
     },
     "adult": {
-        "sensitive_column": "sex",
-        "sensitive_values": ["Male","Female"],
+        "sensitive_column": ["sex", "race"],
+        "sensitive_values": [["Male","Female"],["White", "Asian-Pac-Islander", "Amer-Indian-Eskimo", "Other", "Black"]],
         "distance_columns": ["age","fnlwgt","education-num","capital-gain","hours-per-week"],
         "subset_size": 600
     }

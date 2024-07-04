@@ -131,7 +131,7 @@ class fairlet_decomposition:
                 indices.append(self.blues[int(fairlet_center_code[1:])-1])
 
         if drop == True:
-            return self.dataset[self.dataset.index.isin(indices)].drop(self.config[self.dataset_name]['sensitive_column'], axis=1)
+            return self.dataset[self.dataset.index.isin(indices)].drop(self.config[self.dataset_name]['sensitive_column'][0], axis=1)
         else:
             return self.dataset[self.dataset.index.isin(indices)]
     
@@ -178,12 +178,14 @@ class fairlet_decomposition:
     
 
     def get_cluster_information(self, clustering_method="k-centers", t=2, T=400):
+        fairlet_start_time = time.time()
         distances = self.get_distances()
         self.create_MCF(distances, clustering_method, t, T)
         flowCost, flowDictionary = nx.network_simplex(self.G)
         self.information, centers, costs = self.get_fairlet_information(flowDictionary)
         self.fairlet_center_sampled_dataset = self.get_fairlet_center_dataframe(centers)
         self.fairlet_centers_dataset = self.get_fairlet_center_dataframe(centers, False)
+        return (time.time() - fairlet_start_time)
 
     def CalculateClusterCostAndBalance(self, k_centers_instance: k_center, k_medians_instance: k_medians, clustering_method = "k-centers", starting_num_clusters=3, max_num_clusters=20, balance_evaluation="min"):
         unfair_costs = []
@@ -197,7 +199,6 @@ class fairlet_decomposition:
         cluster_counts = []
 
         for cluster_count in range(starting_num_clusters, max_num_clusters+1):
-            print("cluster count: " + str(cluster_count))
             cluster_counts.append(cluster_count)
 
             if(clustering_method == "k-centers"):

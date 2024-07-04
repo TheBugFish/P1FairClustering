@@ -34,9 +34,14 @@ class data_loader:
 
     def prepare_dataset(self, dataset, dataset_name, complexity = "simple"):
         if(complexity == "simple"):
-            dataset = dataset[dataset[self.config[dataset_name]['sensitive_column'][0]].isin(self.config[dataset_name]['sensitive_values'][0])]
-            dataset = dataset[[self.config[dataset_name]['sensitive_column'][0]] + self.config[dataset_name]['distance_columns']].copy()
-            dataset[self.config[dataset_name]['sensitive_column'][0]] = np.where(dataset[self.config[dataset_name]['sensitive_column'][0]] == self.config[dataset_name]['sensitive_values'][0][0], 0, 1)
+            if(len(self.config[dataset_name]['sensitive_column']) == 1):
+                dataset = dataset[dataset[self.config[dataset_name]['sensitive_column'][0]].isin(self.config[dataset_name]['sensitive_values'][0])]
+                dataset = dataset[self.config[dataset_name]['sensitive_column'] + self.config[dataset_name]['distance_columns']].copy()
+                dataset[self.config[dataset_name]['sensitive_column'][0]] = np.where(dataset[self.config[dataset_name]['sensitive_column'][0]] == self.config[dataset_name]['sensitive_values'][0][0], 0, 1)
+            else:
+                dataset = dataset[dataset[self.config[dataset_name]['sensitive_column'][0]].isin(self.config[dataset_name]['sensitive_values'][0])]
+                dataset = dataset[[self.config[dataset_name]['sensitive_column'][0]] + self.config[dataset_name]['distance_columns']].copy()
+                dataset[self.config[dataset_name]['sensitive_column'][0]] = np.where(dataset[self.config[dataset_name]['sensitive_column'][0]] == self.config[dataset_name]['sensitive_values'][0][0], 0, 1)
         elif(complexity == "extended"):
             dataset = dataset[self.config[dataset_name]['sensitive_column'] + self.config[dataset_name]['distance_columns']]
 
@@ -50,13 +55,19 @@ class data_loader:
     def sample_data(self, dataset, dataset_name, random_state):
         return dataset.sample(n=self.config[dataset_name]['subset_size'], random_state=random_state)
     
-    def normalize_data(self, dataset, dataset_name):
+    def normalize_data(self, dataset, dataset_name, complexity="simple"):
         original_indices = dataset.index
         distance_columns_normalized = pd.DataFrame(self.scaler.fit_transform(dataset[self.config[dataset_name]['distance_columns']]), columns=self.config[dataset_name]['distance_columns'], index=original_indices)
-        normalized_data = dataset[self.config[dataset_name]['sensitive_column']].join(distance_columns_normalized)
-        return normalized_data
+        if complexity == 'simple':
+            normalized_data = dataset[self.config[dataset_name]['sensitive_column'][0]].to_frame().join(distance_columns_normalized)
+            return normalized_data
+        elif complexity == 'extended':
+            normalized_data = dataset[self.config[dataset_name]['sensitive_column']].join(distance_columns_normalized)
+            return normalized_data
+        else:
+            print("use valid complexity measure")
 
     def red_blue_split(self, dataset, dataset_name):
-        reds = list(dataset[dataset[self.config[dataset_name]['sensitive_column']]==0].index)
-        blues = list(dataset[dataset[self.config[dataset_name]['sensitive_column']]==1].index)
+        reds = list(dataset[dataset[self.config[dataset_name]['sensitive_column'][0]]==0].index)
+        blues = list(dataset[dataset[self.config[dataset_name]['sensitive_column'][0]]==1].index)
         return reds, blues

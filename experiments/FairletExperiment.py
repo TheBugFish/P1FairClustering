@@ -18,7 +18,7 @@ def FindValidRandomStates(dataset, dataset_name, loader: data_loader, iterations
             sampled_dataset = loader.sample_data(dataset, dataset_name, randomState)
             sample_balance = mathHelper.get_balance(sampled_dataset, config[dataset_name]['sensitive_column'][0], dataset_name)
             randomState+=1
-        validRandomStates.append(randomState)
+        validRandomStates.append(randomState-1)
         foundRandomStates+=1
 
     return validRandomStates
@@ -33,12 +33,14 @@ def DoFairletExperiment(dataset, dataset_name, loader: data_loader,  randomState
         fair_costs = []
         fair_balances = []
         fair_durations = []
+        fairlet_durations = []
 
         for randomState in randomStates:
             sampled_dataset = loader.sample_data(dataset, dataset_name, randomState)
             reds, blues = loader.red_blue_split(sampled_dataset, dataset_name)
             fairletDecomposition = fairlet_decomposition(sampled_dataset, blues, reds, dataset_name, loader)
-            fairletDecomposition.get_cluster_information(clustering_method=clustering_method, t=2, T=400)
+            fairlet_duration = fairletDecomposition.get_cluster_information(clustering_method=clustering_method, t=2, T=400)
+            fairlet_durations.append(fairlet_duration)
 
             if clustering_method == "k-centers":
                 k_centers_instance = k_center(dataset_name, loader)
@@ -66,7 +68,7 @@ def DoFairletExperiment(dataset, dataset_name, loader: data_loader,  randomState
             else:
                 print("enter valid clustering algorithm")
 
-        return cluster_counts, unfair_costs, unfair_balances, unfair_durations, fair_costs, fair_balances, fair_durations
+        return cluster_counts, unfair_costs, unfair_balances, unfair_durations, fair_costs, fair_balances, fair_durations, fairlet_durations
     else:
         print("enter valid fair clustering algorithm")
 

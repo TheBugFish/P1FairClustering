@@ -20,11 +20,13 @@ class plotHelper:
         fig.suptitle(title)
         plt.show()
 
-    def plot_durations(self, cluster_counts, unfair_durations, fair_durations):
+    def plot_durations(self, cluster_counts, unfair_durations, fair_durations, full_fair_durations):
         x_axis = np.arange(min(cluster_counts), max(cluster_counts)+1)
-        plt.bar(x_axis - 0.2, unfair_durations, 0.4, label = "unfair durations")
-        plt.bar(x_axis + 0.2, fair_durations, 0.4, label = "fair durations")
-        
+        plt.bar(x_axis - 0.4, unfair_durations, 0.4, label = "unfair durations")
+        plt.bar(x_axis + 0, fair_durations, 0.4, label = "fair durations")
+        plt.bar(x_axis + 0.4, full_fair_durations, 0.4, "fair durations incl. fairlet decomp.")
+        plt.bar(x_axis)
+
         plt.xticks(x_axis, cluster_counts)
         plt.xlabel("Number of Clusters") 
         plt.ylabel("duration in seconds") 

@@ -1,5 +1,4 @@
 import numpy as np
-from itertools import groupby
 from helper.math_helper import math_helper
 from helper.data_loader import data_loader
 
@@ -21,14 +20,15 @@ class k_center:
         max_distance = 0
 
         for i in range(n_clusters):
-            self.centers.append(data.iloc[max_distance_index])
+            self.centers.append(max_distance_index)
 
             max_distance = 0
             max_distance_index = 0
+            index = 0
             for row in data.iterrows():
-                index, point = row
+                _, point = row
 
-                new_point_distance = self.mathHelper.squared_euclidean_distance(point, self.centers[i], self.dataset_name)
+                new_point_distance = self.mathHelper.squared_euclidean_distance(point, data.iloc[self.centers[i]], self.dataset_name)
 
                 if i == 0 or new_point_distance < distance_to_assigned_cluster[index]:
                     self.cluster_assignment[index] = i
@@ -37,6 +37,8 @@ class k_center:
                 if distance_to_assigned_cluster[index] > max_distance:
                     max_distance = distance_to_assigned_cluster[index]
                     max_distance_index = index
+
+                index+=1
 
         self.costs = np.sqrt(max_distance)
 

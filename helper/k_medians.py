@@ -1,17 +1,55 @@
 import numpy as np
+import random
 from helper.math_helper import math_helper
 from helper.data_loader import data_loader
+from scipy.spatial.distance import pdist, squareform
 
 class k_medians:
 
-    def __init__(self, dataset_name, data_loader: data_loader, maxRuns = 100):
+    def __init__(self, dataset_name, data_loader: data_loader, runs = 5):
         self.dataset_name = dataset_name
-        self.maxRuns = maxRuns
+        self.runs = runs
+        self.dataLoader = data_loader
         self.mathHelper = math_helper(data_loader)
 
     def fit(self, data, n_clusters):
-        self.cluster_assignment = np.zeros(len(data))
-        self.costs = [None] * n_clusters
+
+        all_pair_distance = squareform(pdist(data[self.dataLoader.get_config()[self.dataset_name]['distance_columns']].values, 'euclidean'))
+
+        num_points = len(data.index)
+
+        self.best_cluster_centers  = [None] * n_clusters
+        self.cluster_assignment = [None] * num_points
+        self.costs = None
+
+        for run in range(0, self.runs):
+
+            cluster_centers = []
+
+            accumulative_prob = np.cumsum([1/num_points] * num_points)
+            weights = [None] * num_points
+
+            for cluster in range(0, n_clusters):
+                new_cluster = None
+
+                while new_cluster is None or new_cluster in cluster_centers:
+                    rand = random.uniform(0, 1) - 1e-9
+                    new_cluster = np.searchsorted(accumulative_prob, rand)
+                cluster_centers.append(new_cluster)
+
+                running_sum = 0
+                accumulative_prob = []
+                for point in range(0, num_points):
+                    if cluster == 0 or all_pair_distance[point][cluster_centers[cluster]] < weights[point]:
+                        weights[point] = all_pair_distance[point][cluster_centers[cluster]]
+
+                    running_sum = running_sum + weights[point]
+                    accumulative_prob.append(running_sum)
+                accumulative_prob = np.divide(accumulative_prob, running_sum)
+            
+        assignment = [None] * num_points
+        assignment_tmp = [None] * num_points
+        cost = 0
 
         medians = data.sample(n=n_clusters)
         for i in range(self.maxRuns):

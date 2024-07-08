@@ -16,7 +16,7 @@ class data_loader:
 
     def get_config(self):
         return self.config
-
+    
     def load_dataset(self, dataset_name):
         # fetch dataset
         dataset = None
@@ -24,6 +24,8 @@ class data_loader:
             dataset = fetch_ucirepo(id=2) 
         elif(dataset_name == "bank"):
             dataset = fetch_ucirepo(id=222)
+        elif(dataset_name == "diabetes"):
+            dataset = fetch_ucirepo(id=296) 
         else:
             print("please enter a valid dataset name")
 
@@ -33,6 +35,9 @@ class data_loader:
         return X, y
 
     def prepare_dataset(self, dataset, dataset_name, complexity = "simple"):
+
+        dataset.dropna()
+
         if(complexity == "simple"):
             if(len(self.config[dataset_name]['sensitive_column']) == 1):
                 dataset = dataset[dataset[self.config[dataset_name]['sensitive_column'][0]].isin(self.config[dataset_name]['sensitive_values'][0])]

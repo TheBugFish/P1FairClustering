@@ -1,26 +1,12 @@
-import networkx as nx
-import time
-import numpy as np
-from helper.math_helper import math_helper
-from helper.data_loader import data_loader
+from fairlets.Fairlet_decomposition import Fairlet_decomposition
 from helper.k_center import k_center
 from helper.k_medians import k_medians
+import networkx as nx
+import numpy as np
+import time
 
-class fairlet_decomposition:
-
-    def __init__(self, dataset, blues, reds, dataset_name, data_loader: data_loader):
-        self.dataset = dataset
-        self.blues = blues
-        self.reds = reds
-        self.dataset_name = dataset_name
-        self.config = data_loader.get_config()
-        self.mathHelper = math_helper(data_loader)
-
-        self.blue_count = len(self.blues)
-        self.red_count = len(self.reds)
-
-    def get_distances(self):
-        return self.mathHelper.get_distances(self.dataset, self.blues, self.reds, self.dataset_name)
+class MCF_decomposition(Fairlet_decomposition):
+        
 
     def create_MCF(self, distances, clustering_method="k-centers", t=2, T=400, maxCost=1000000):
         #supply = negative demand
@@ -67,7 +53,7 @@ class fairlet_decomposition:
 
         self.G = G
 
-    def get_fairlets(self, flowDictionary):
+    def getFairletsFromFlow(self, flowDictionary):
         fairlets = []
 
         for dictKey in flowDictionary.keys():
@@ -88,8 +74,8 @@ class fairlet_decomposition:
 
         return fairlets
     
-    def get_fairlet_information(self, flowDictionary):
-        fairlets = self.get_fairlets(flowDictionary)
+    def getFairletInformationFromFlow(self, flowDictionary, distanceMetric):
+        fairlets = self.getFairletsFromFlow(flowDictionary)
 
         fairlet_information = []
         fairlet_centers = []
@@ -101,18 +87,18 @@ class fairlet_decomposition:
             for blue in fairlet['blues']:
                 for blue2 in fairlet['blues']:
                     if blue != blue2:
-                        distances.append(self.mathHelper.compute_distance(self.dataset.loc[self.blues[int(blue[1:])-1]], self.dataset.loc[self.blues[int(blue2[1:])-1]], dataset_name=self.dataset_name))
+                        distances.append(self.mathHelper.compute_distance(self.dataset.loc[self.blues[int(blue[1:])-1]], self.dataset.loc[self.blues[int(blue2[1:])-1]], dataset_name=self.dataset_name, distanceMetric=distanceMetric))
                 for red in fairlet['reds']:
-                    distances.append(self.mathHelper.compute_distance(self.dataset.loc[self.blues[int(blue[1:])-1]], self.dataset.loc[self.reds[int(red[1:])-1]], dataset_name=self.dataset_name))
+                    distances.append(self.mathHelper.compute_distance(self.dataset.loc[self.blues[int(blue[1:])-1]], self.dataset.loc[self.reds[int(red[1:])-1]], dataset_name=self.dataset_name, distanceMetric=distanceMetric))
                 fairlet_distances[blue] = max(distances)
                 distances = []
 
             for red in fairlet['reds']:
                 for blue in fairlet['blues']:
-                    distances.append(self.mathHelper.compute_distance(self.dataset.loc[self.reds[int(red[1:])-1]], self.dataset.loc[self.blues[int(blue[1:])-1]], dataset_name=self.dataset_name))
+                    distances.append(self.mathHelper.compute_distance(self.dataset.loc[self.reds[int(red[1:])-1]], self.dataset.loc[self.blues[int(blue[1:])-1]], dataset_name=self.dataset_name, distanceMetric=distanceMetric))
                 for red2 in fairlet['reds']:
                     if red != red2:
-                        distances.append(self.mathHelper.compute_distance(self.dataset.loc[self.reds[int(red[1:])-1]], self.dataset.loc[self.reds[int(red2[1:])-1]], dataset_name=self.dataset_name))
+                        distances.append(self.mathHelper.compute_distance(self.dataset.loc[self.reds[int(red[1:])-1]], self.dataset.loc[self.reds[int(red2[1:])-1]], dataset_name=self.dataset_name, distanceMetric=distanceMetric))
                 fairlet_distances[red] = max(distances)
 
             center = min(fairlet_distances, key=fairlet_distances.get)
@@ -134,7 +120,7 @@ class fairlet_decomposition:
             return self.dataset[self.dataset.index.isin(indices)].drop(self.config[self.dataset_name]['sensitive_column'][0], axis=1)
         else:
             return self.dataset[self.dataset.index.isin(indices)]
-    
+        
     def get_cluster_balances(self, dataset, cluster_mapping, fairlet_information=None, fair=False):
         clusters = []
         for center in cluster_mapping.keys():
@@ -176,17 +162,17 @@ class fairlet_decomposition:
                 balances.append(self.mathHelper.get_balance(cluster, self.config[self.dataset_name]['sensitive_column'][0], self.dataset_name))
         return balances
     
-
-    def get_cluster_information(self, clustering_method="k-centers", t=2, T=400):
+    def MakeFairlets(self, clustering_method="k-centers", t=2, T=400):
+        distanceMetric = Fairlet_decomposition.getDistanceMetric(self, clustering_method)
         fairlet_start_time = time.time()
-        distances = self.get_distances()
+        distances = Fairlet_decomposition.getDistances(self, distanceMetric)
         self.create_MCF(distances, clustering_method, t, T)
         flowCost, flowDictionary = nx.network_simplex(self.G)
-        self.information, centers, costs = self.get_fairlet_information(flowDictionary)
+        self.information, centers, costs = self.getFairletInformationFromFlow(flowDictionary, distanceMetric)
         self.fairlet_center_sampled_dataset = self.get_fairlet_center_dataframe(centers)
         self.fairlet_centers_dataset = self.get_fairlet_center_dataframe(centers, False)
         return (time.time() - fairlet_start_time)
-
+    
     def CalculateClusterCostAndBalance(self, k_centers_instance: k_center, k_medians_instance: k_medians, clustering_method = "k-centers", starting_num_clusters=3, max_num_clusters=20, balance_evaluation="min"):
         unfair_costs = []
         unfair_balances = []

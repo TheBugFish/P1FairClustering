@@ -51,35 +51,61 @@ class k_medians:
         assignment_tmp = [None] * num_points
         cost = 0
 
-        medians = data.sample(n=n_clusters)
-        for i in range(self.maxRuns):
+        for iter in range(2,5):
 
-            medians_old = medians.copy()
+            updated_sln = True
+            while updated_sln is True:
+                updated_sln = False
 
-            #assign points to clusters
-            for j in range(len(data)):
-                distances = []
-                for _, median in medians.iterrows():
-                    distances.append(self.mathHelper.compute_distance(data.iloc[j], median, self.dataset_name))
-                idx = np.argmin(distances)
-                self.cluster_assignment[j] = idx
+                cost = 0
+                for point in range(0, num_points):
+                    assignment[point] = 0
+                    assignment_tmp[point] = None
+                    connection_cost = all_pair_distance[point][cluster_centers[0]]
 
-            #update cluster centers
-            for j in range(n_clusters):
-                cluster_element_locs = [idx for idx, n in enumerate(self.cluster_assignment) if n == j]
-                new_median = data.iloc[cluster_element_locs]
+                    for c in range(1, n_clusters):
+                        if all_pair_distance[point][cluster_centers[c]] < connection_cost:
+                            # The previously closest center is now the second-closest center
+                            assignment_tmp[point] = assignment[point]
+                            # Update the closest center
+                            assignment[point] = c
+                            connection_cost = all_pair_distance[point][cluster_centers[c]]
+                        if assignment_tmp[point] is None:
+                            assignment_tmp[point] = c
+                    cost = cost + connection_cost
 
-                if len(new_median > 0):
-                    medians.iloc[j] = new_median.median()
-                cost = sum(self.mathHelper.compute_distance(elem, medians.iloc[j], self.dataset_name) for _, elem in new_median.iterrows())
-                self.costs[j] = cost
+                for new_c in range(0,num_points):
+                    # Running cost of swapping new_c with each of the current centers
+                    swap_cost = np.array([0] * n_clusters)
 
-                #stop condition
-                median_difference = sum(medians.sum(axis=1).values - medians_old.sum(axis=1).values)
-                if(median_difference ==  0 or i >= self.maxRuns):
-                    break
+                    # For all points, compute the connection cost of swapping new_c with each one of the current centers
+                    for p in range(0,num_points):
+                        connection_cost = np.array([all_pair_distance[p][new_c]]* n_clusters)
+                        # If p does not go to this new_c, it has to go to pred[p]
+                        c = cluster_centers[assignment[p]]
+                        if all_pair_distance[p][new_c] > all_pair_distance[p][c]:
+                            connection_cost = np.array([all_pair_distance[p][c]]* n_clusters)
+                            sub_c = cluster_centers[assignment_tmp[p]]
+                            # But if pred[p] is thrown away, p has to choose between sub_c and new_c
+                            connection_cost[assignment[p]] = min(all_pair_distance[p][new_c], all_pair_distance[p][sub_c])
+                        swap_cost = np.add(swap_cost, connection_cost)
+
+                    # Find the center for which the swapping cost of new_c is minimum
+                    new_cost, c = min((new_cost, c) for (c, new_cost) in enumerate(swap_cost))
+                    # Check if this new_c is good for substitution
+                    if new_cost < (1-1/(2**iter))* cost:
+                        cluster_centers[c] = new_c
+                        updated_sln = True
+                        # Break the loop to allow for iter to be incremented and allow for smaller improvements
+                        break
+
+        if self.costs is None or cost < self.costs:
+            self.costs = cost
+            self.cluster_assignment = assignment[:]
+            self.best_cluster_centers = cluster_centers[:] 
     
     def get_results(self):
+        #TODO
         self.cluster_assignment = [int(x) for x in self.cluster_assignment]
         cluster_mapping = {}
         for cluster in set(self.cluster_assignment):

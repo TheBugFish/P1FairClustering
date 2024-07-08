@@ -10,5 +10,11 @@
         "sensitive_values": [["Male","Female"],["White", "Asian-Pac-Islander", "Amer-Indian-Eskimo", "Other", "Black"]],
         "distance_columns": ["age","fnlwgt","education-num","capital-gain","hours-per-week"],
         "subset_size": 600
+    },
+    "diabetes": {
+        "sensitive_column":["gender", "race"],
+        "sensitive_values":[["male", "female"],["Caucasian", "Asian", "African American", "Hispanic", "other"]],
+        "distance_columns":["age", "time_in_hospital"],
+        "subset_size": 1000
     }
 }

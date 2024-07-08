@@ -7,7 +7,7 @@ class math_helper:
         self.config = data_loader.get_config()
 
     #compute euclidean distance
-    def compute_distance(self, a, b, dataset_name):
+    def euclidean_distance(self, a, b, dataset_name):
         res = 0
         for distance_column in self.config[dataset_name]['distance_columns']:
             res += (a[distance_column] - b[distance_column]) ** 2
@@ -20,14 +20,23 @@ class math_helper:
             res += (a[distance_column] - b[distance_column]) ** 2
         return res
 
+    def compute_distance(self, a, b, dataset_name, distanceMetric = "euclidean"):
+        if distanceMetric == "euclidean":
+            return self.euclidean_distance(a, b, dataset_name)
+        elif distanceMetric == "sqeuclidean":
+            return self.squared_euclidean_distance(a, b, dataset_name)
+
     #returns a 2-dimensional array of distances between all red and blue points
-    def get_distances(self, dataset, a, b, dataset_name):
+    def get_distances(self, dataset, a, b, dataset_name, distanceMetric = "euclidean"):
 
         distances = [[0]* len(b)] * len(a)
 
         for idx_blue, i in enumerate(a):
             for idx_red, j in enumerate(b):
-                distances[idx_blue][idx_red] = self.compute_distance(dataset.loc[i], dataset.loc[j], dataset_name=dataset_name)
+                if distanceMetric == "euclidean":
+                    distances[idx_blue][idx_red] = self.euclidean_distance(dataset.loc[i], dataset.loc[j], dataset_name=dataset_name)
+                elif distanceMetric == "sqeuclidean":
+                    distances[idx_blue][idx_red] = self.squared_euclidean_distance(dataset.loc[i], dataset.loc[j], dataset_name=dataset_name)
 
         return distances
     
